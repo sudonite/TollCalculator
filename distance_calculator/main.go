@@ -1,13 +1,23 @@
 package main
 
-import "log"
+import (
+	"log"
 
-const kafkaTopic = "obudata"
+	"github.com/sudonite/TollCalculator/aggregator/client"
+)
+
+const (
+	kafkaTopic         = "obudata"
+	aggregatorEndpoint = "http://localhost:3000/aggregate"
+)
 
 func main() {
-	kafkaConsumer, err := NewKafkaConsumer(kafkaTopic)
+	svc := NewCalculatorService()
+	svc = NewLogMiddleware(svc)
+	kafkaConsumer, err := NewKafkaConsumer(kafkaTopic, svc, client.NewClient(aggregatorEndpoint))
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	kafkaConsumer.Start()
 }
