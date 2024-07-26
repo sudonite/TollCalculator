@@ -7,8 +7,8 @@ type Invoice struct {
 }
 
 type Distance struct {
-	Value float64 `json:"value"`
 	OBUID int     `json:"obuID"`
+	Value float64 `json:"value"`
 	Unix  int64   `json:"unix"`
 }
 

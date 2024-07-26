@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 
 	"github.com/sudonite/TollCalculator/types"
+	"google.golang.org/grpc"
 )
 
 func handleAggregate(svc Aggregator) http.HandlerFunc {
@@ -52,6 +54,19 @@ func writeJSON(w http.ResponseWriter, status int, v any) error {
 	return json.NewEncoder(w).Encode(v)
 }
 
+func makeGRPCTransport(listenAddr string, svc Aggregator) error {
+	fmt.Println("gRPC transport running on", listenAddr)
+	ln, err := net.Listen("TCP", listenAddr)
+	if err != nil {
+		return err
+	}
+	defer ln.Close()
+
+	server := grpc.NewServer([]grpc.ServerOption{}...)
+	types.RegisterAggregatorServer(server, NewGRPCAggregatorServer(svc))
+	return server.Serve(ln)
+}
+
 func makeHTTPTransport(listenAddr string, svc Aggregator) {
 	fmt.Println("HTTP transport running on", listenAddr)
 	http.HandleFunc("/aggregate", handleAggregate(svc))
@@ -60,12 +75,15 @@ func makeHTTPTransport(listenAddr string, svc Aggregator) {
 }
 
 func main() {
-	listenAddr := flag.String("listenaddr", ":3000", "The listen address of the HTTP server")
+	httpListenAddr := flag.String("httpAddr", ":3000", "The listen address of the HTTP server")
+	grpcListenAddr := flag.String("grpcAddr", ":3001", "The listen address of the gRPC server")
 	flag.Parse()
 
 	store := NewMemoryStore()
+
 	svc := NewInvoiceAggregator(store)
 	svc = NewLogMiddleware(svc)
 
-	makeHTTPTransport(*listenAddr, svc)
+	go makeGRPCTransport(*grpcListenAddr, svc)
+	makeHTTPTransport(*httpListenAddr, svc)
 }
