@@ -27,3 +27,11 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+#  prometheus:
+#    image: prom/prometheus
+#    hostname: prometheus
+#    container_name: prometheus
+#    ports:
+#      - 9090:9090
+#    volumes:
+#      - ./.config/prometheus.yml:/etc/prometheus/prometheus.yml

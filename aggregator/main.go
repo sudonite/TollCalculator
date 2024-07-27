@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sudonite/TollCalculator/types"
 	"google.golang.org/grpc"
 )
@@ -72,6 +73,7 @@ func makeHTTPTransport(listenAddr string, svc Aggregator) error {
 	fmt.Println("HTTP transport running on", listenAddr)
 	http.HandleFunc("/aggregate", handleAggregate(svc))
 	http.HandleFunc("/invoice", handleGetInvoice(svc))
+	http.Handle("/metrics", promhttp.Handler())
 	return http.ListenAndServe(listenAddr, nil)
 }
 
@@ -80,9 +82,12 @@ func main() {
 	grpcListenAddr := flag.String("grpcAddr", ":3001", "The listen address of the gRPC server")
 	flag.Parse()
 
-	store := NewMemoryStore()
+	var (
+		store = NewMemoryStore()
+		svc   = NewInvoiceAggregator(store)
+	)
 
-	svc := NewInvoiceAggregator(store)
+	svc = NewMetricsMiddleware(svc)
 	svc = NewLogMiddleware(svc)
 
 	go func() {
