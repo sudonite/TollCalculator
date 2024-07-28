@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"github.com/sudonite/TollCalculator/types"
 )
@@ -75,10 +77,20 @@ func (dr *DataReceiver) wsReceiveLoop() {
 }
 
 func main() {
+	var (
+		recvEndpoint = os.Getenv("RECV_WS_ENDPOINT")
+	)
+
 	recv, err := NewDataReceiver()
 	if err != nil {
 		log.Fatal(err)
 	}
 	http.HandleFunc("/ws", recv.handleWS)
-	http.ListenAndServe(":30000", nil)
+	http.ListenAndServe(recvEndpoint, nil)
+}
+
+func init() {
+	if err := godotenv.Load(); err != nil {
+		logrus.Fatal("Error loading .env file")
+	}
 }

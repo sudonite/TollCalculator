@@ -3,13 +3,13 @@ package main
 import (
 	"log"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
 	"github.com/sudonite/TollCalculator/types"
 )
-
-const wsEndpoint = "ws://127.0.0.1:30000/ws"
 
 var sendInterval = time.Second * 5
 
@@ -32,6 +32,10 @@ func genOBUIDS(n int) []int {
 }
 
 func main() {
+	var (
+		wsEndpoint = "ws://localhost:" + os.Getenv("RECV_WS_ENDPOINT") + "/ws"
+	)
+
 	conn, _, err := websocket.DefaultDialer.Dial(wsEndpoint, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -54,5 +58,11 @@ func main() {
 			}
 		}
 		time.Sleep(sendInterval)
+	}
+}
+
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
 	}
 }

@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/sudonite/TollCalculator/types"
 )
@@ -27,4 +29,15 @@ func (m *MemoryStore) Get(id int) (float64, error) {
 		return 0.0, fmt.Errorf("could not find distance for OBU ID %d", id)
 	}
 	return dist, nil
+}
+
+func makeStore() Storer {
+	storeType := os.Getenv("AGG_STORE_TYPE")
+	switch storeType {
+	case "memory":
+		return NewMemoryStore()
+	default:
+		log.Fatalf("Invalid store type: %s", storeType)
+		return nil
+	}
 }

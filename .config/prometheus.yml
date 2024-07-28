@@ -10,4 +10,4 @@ scrape_configs:
     scheme: http
     follow_redirects: true
     static_configs:
-      - targets: ["localhost:3000"]
+      - targets: ["localhost:4000"]

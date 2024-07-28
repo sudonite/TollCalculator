@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"github.com/sudonite/TollCalculator/aggregator/client"
 )
@@ -54,17 +55,21 @@ func makeAPIFunc(fn apiFunc) http.HandlerFunc {
 }
 
 func main() {
-	listenAddr := flag.String("listenAddr", ":6000", "The listen address of the HTTP server")
-	aggregatorServiceAddr := flag.String("aggServiceAddr", "http://localhost:3000", "The listen address of the aggregator service")
-	flag.Parse()
-
-	logrus.Infof("Gateway HTTP server running on port %s", *listenAddr)
-
 	var (
-		client     = client.NewHTTPClient(*aggregatorServiceAddr)
-		invHandler = NewInvoiceHandler(client)
+		listenAddr            = os.Getenv("GATEWAY_HTTP_ENDPOINT")
+		aggregatorServiceAddr = "http://localhost" + os.Getenv("AGG_HTTP_ENDPOINT")
+		client                = client.NewHTTPClient(aggregatorServiceAddr)
+		invHandler            = NewInvoiceHandler(client)
 	)
 
+	logrus.Infof("Gateway HTTP server running on port %s", listenAddr)
+
 	http.HandleFunc("/invoice", makeAPIFunc(invHandler.handleGetInvoice))
-	log.Fatal(http.ListenAndServe(*listenAddr, nil))
+	log.Fatal(http.ListenAndServe(listenAddr, nil))
+}
+
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
 }
