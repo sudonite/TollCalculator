@@ -7,58 +7,12 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sudonite/TollCalculator/types"
 	"google.golang.org/grpc"
 )
-
-func handleAggregate(svc Aggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-			return
-		}
-		var distance types.Distance
-		if err := json.NewDecoder(r.Body).Decode(&distance); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-			return
-		}
-		if err := svc.AggregateDistance(distance); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-			return
-		}
-	}
-}
-
-func handleGetInvoice(svc Aggregator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-			return
-		}
-
-		values, ok := r.URL.Query()["obu"]
-		if !ok {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Missing OBU ID"})
-			return
-		}
-		obuID, err := strconv.Atoi(values[0])
-		if err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid OBU ID"})
-			return
-		}
-
-		invoice, err := svc.CalculateInvoice(obuID)
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-			return
-		}
-		writeJSON(w, http.StatusOK, invoice)
-	}
-}
 
 func writeJSON(w http.ResponseWriter, status int, v any) error {
 	w.WriteHeader(status)
@@ -80,9 +34,17 @@ func makeGRPCTransport(listenAddr string, svc Aggregator) error {
 }
 
 func makeHTTPTransport(listenAddr string, svc Aggregator) error {
+	var (
+		aggMetricHandler  = NewHTTPMetricHandler("aggregate")
+		invMetricHandler  = NewHTTPMetricHandler("invoice")
+		aggregatorHandler = makeHTTPHandlerFunc(aggMetricHandler.instrument(handleAggregate(svc)))
+		invoiceHandler    = makeHTTPHandlerFunc(invMetricHandler.instrument(handleGetInvoice(svc)))
+	)
+
 	fmt.Println("HTTP transport running on", listenAddr)
-	http.HandleFunc("/aggregate", handleAggregate(svc))
-	http.HandleFunc("/invoice", handleGetInvoice(svc))
+
+	http.HandleFunc("/aggregate", aggregatorHandler)
+	http.HandleFunc("/invoice", invoiceHandler)
 	http.Handle("/metrics", promhttp.Handler())
 	return http.ListenAndServe(listenAddr, nil)
 }

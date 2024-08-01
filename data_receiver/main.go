@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -70,6 +72,7 @@ func (dr *DataReceiver) wsReceiveLoop() {
 			fmt.Println("Read error:", err)
 			continue
 		}
+		data.RequestID = rand.Intn(math.MaxInt)
 		if err := dr.produceData(data); err != nil {
 			fmt.Println("Kafka Produce error:", err)
 		}
